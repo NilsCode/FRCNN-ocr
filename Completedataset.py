@@ -246,13 +246,13 @@ TrainDataset = ImageWordsDataset(10)
 
 
 
-imgobjects = TrainDataset.generate_img_data(letterdata = True)
+#imgobjects = TrainDataset.generate_img_data(letterdata = True)
 
-TrainDataset.add_noise(0.8)
+#TrainDataset.add_noise(0.8)
 
-TrainDataset.generatelabels(datafile,"images\\train\\")
+#TrainDataset.generatelabels(datafile,"images\\train\\")
 
-TrainDataset.write_to_file()
+#TrainDataset.write_to_file()
 
 # LetterTrainDataset = letterBndBoxDataset(imgobjects)
 
