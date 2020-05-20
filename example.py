@@ -14,7 +14,7 @@ TrainDataset = ImageWordsDataset(10)
 # letter boundingboxes
 imgobjects = TrainDataset.generate_img_data(letterdata = True)
 
-#Add noise to gaussian noise and blur to 50% of the images
+#Add gaussian noise and blur to 50% of the images
 TrainDataset.add_noise(0.5)
 
 # Generate labels in csv format(as per tensorflow object detection api format)
