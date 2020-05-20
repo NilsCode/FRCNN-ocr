@@ -1,2 +1,3 @@
 # FRCNN-ocr
 Use of FRCNN model to detect and recognize text...
+run example.py to view dataset
