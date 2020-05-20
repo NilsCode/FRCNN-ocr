@@ -11,7 +11,6 @@ font = [cv2.FONT_HERSHEY_SIMPLEX,cv2.FONT_HERSHEY_PLAIN,cv2.FONT_HERSHEY_DUPLEX,
 alphabets = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p',
              'q','r','s','t','u','v','w','x','y','z']
 
-text = []
 
 class ImageHandler:
     def __init__(self, img_height, img_width, fillcolor, imgid, storepath):
@@ -185,10 +184,12 @@ class ImageWordsDataset:
                 
         return self.imagesobject
     
-    def generatelabels(self,fileobject,path,classname = "text"):
-        self.file = fileobject
+    def generatelabels(self,filename,path,imagespath,classname = "text"):
+        self.filename = filename
         self.path = path
         self.classname = classname
+        self.labelfile = open(self.path + self.filename,'w')
+        self.folderpath = imagespath
         for imgobject in self.imagesobject:
             
             for word in imgobject.wordlist:
@@ -196,13 +197,14 @@ class ImageWordsDataset:
                 ymin = imgobject.wordbndboxdict[word][1]
                 xmax = imgobject.wordbndboxdict[word][2]
                 ymax = imgobject.wordbndboxdict[word][3]
-                datastring = path + str(imgobject.imgid) + ".jpg" + ',' + str(imgobject.img_width) +','+str(imgobject.img_height)+',' + self.classname + ',' + str(xmin) + ',' + str(ymin) + ',' + str(xmax) + ',' + str(ymax) +'\n'
-                
+                datastring = self.folderpath + str(imgobject.imgid) + ".jpg" + ',' + str(imgobject.img_width) +','+str(imgobject.img_height)+',' + self.classname + ',' + str(xmin) + ',' + str(ymin) + ',' + str(xmax) + ',' + str(ymax) +'\n'
+                self.labelfile.write(datastring)
                 print(datastring)
-    
-    def write_to_file(self):
+        self.labelfile.close()
+            
+    def write_images_to_folder(self):
         for imgobject in self.imagesobject:
-            cv2.imwrite(self.path + str(imgobject.imgid) +".jpg",imgobject.image )
+            cv2.imwrite(self.folderpath + str(imgobject.imgid) +".jpg",imgobject.image )
     
     def add_noise(self,percent_fraction):
         for imgobject in self.imagesobject:
@@ -234,31 +236,3 @@ class letterBndBoxDataset:
             for word in imgobject.wordCrops.keys():
                 cv2.imwrite(self.path + str(imgobject.imgid) + '_' + str(subid) + ".jpg",imgobject.wordCrops[word])
                 subid += 1
-                
-# img = ImageHandler(300,600,255,0,None)
-# img.generate_word_data(100,[40,40],font[6],1.5,1,(0,0,0),True)
-# print(img.wordlist)
-# img.put_words(drawbndbox = False,randomize = True)
-# print(img.generate_letter_bndbox(drawbndbox= True))
-# img.show_image()
-datafile = open("images\\traindata.csv","w")
-TrainDataset = ImageWordsDataset(10)
-
-
-
-#imgobjects = TrainDataset.generate_img_data(letterdata = True)
-
-#TrainDataset.add_noise(0.8)
-
-#TrainDataset.generatelabels(datafile,"images\\train\\")
-
-#TrainDataset.write_to_file()
-
-# LetterTrainDataset = letterBndBoxDataset(imgobjects)
-
-# LetterTrainDataset.generate_labels(None, "images\\train\\")
-
-# LetterTrainDataset.write_to_file()
-
-# imgobjects[1].show_words(2)
-    
