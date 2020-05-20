@@ -7,18 +7,15 @@ Created on Tue May 19 16:35:16 2020
 
 from Completedataset import *
 
-# Create Instance of class to generate Dataset of Images for word detection
-TrainDataset = ImageWordsDataset(10)
+# Create Instance of class to generate Dataset of Images for word detection - (Num Images = 10)
+TrainDataset = ImageWordsDataset(800)
 
 # Generate image objects which are to be used to generate dataset containing 
 # letter boundingboxes
-imgobjects = TrainDataset.generate_img_data(letterdata = True)
-
-#Add gaussian noise and blur to 50% of the images
-TrainDataset.add_noise(0.5)
+imgobjects = TrainDataset.generate_img_data(letterdata = True,skip_percentage = 0.5,noise_add = 0.5)
 
 # Generate labels in csv format(as per tensorflow object detection api format)
-TrainDataset.generatelabels("testdata.csv","images//","images//test//")
+TrainDataset.generatelabels("traindata.csv","images//","images//train//")
 
 # Write images to folder- (location specified when generating labels)
 TrainDataset.write_images_to_folder()

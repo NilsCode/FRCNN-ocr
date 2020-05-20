@@ -21,14 +21,15 @@ class ImageHandler:
         self.imgid = imgid
         self.filepath = storepath
         self.image = np.zeros((self.img_height,self.img_width,3), np.uint8)
-        self.image.fill(fillcolor)
+        self.fillcolor = fillcolor
+        self.image.fill(self.fillcolor)
         self.wordlist = []
         self.inputwordlist = []
         self.alphabets = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p',
              'q','r','s','t','u','v','w','x','y','z']
         self.wordputpointdict = {}
         self.color = ()
-        self.fillcolor = fillcolor
+        
     
     def set_word_list(self, wordlist):
         self.inputwordlist = wordlist
@@ -61,7 +62,7 @@ class ImageHandler:
             wordSize = cv2.getTextSize(word,self.font,self.fontsize,self.linethickness)
             wordlength = wordSize[0][0]
             wordheight = int(wordSize[0][1])
-            margin = np.random.randint(5,20)
+            margin = np.random.randint(10,25)
             xmax = xmin + wordlength
             ymax = ymin + wordheight + math.ceil(wordheight/3.0)
             word_x_cord = xmin
@@ -124,8 +125,8 @@ class ImageHandler:
                 
         return self.wordletterBoxdict
     
-    def put_words(self,randomize = False,drawbndbox = False):
-        if randomize:
+    def put_words(self,randomize = 1,drawbndbox = False):
+        if np.random.random() >= randomize:
             selectionPercentage = np.random.randint(50,100)
             words_to_put = np.random.choice(self.wordlist,int(len(self.wordlist)*selectionPercentage/100.0))
             self.wordlist = words_to_put
@@ -166,7 +167,8 @@ class ImageWordsDataset:
         self.num_images = num_images
         
     
-    def generate_img_data(self, letterdata = False):
+    def generate_img_data(self, letterdata = False,skip_percentage = 0.5,noise_add = 0.5):
+        self.skip_word_percentage = skip_percentage
         for imgid in range(self.num_images):
             imgh = np.random.randint(300,600)
             imgw = np.random.randint(300,600)
@@ -178,10 +180,13 @@ class ImageWordsDataset:
             linethickness= np.random.randint(1,3)
             self.imagesobject.append(ImageHandler(imgh, imgw,filcolor, imgid, None))
             self.imagesobject[imgid].generate_word_data(num_words, startPosition, fontchoice , fontsize, linethickness, (0,0,0),randomize = True)
-            self.imagesobject[imgid].put_words(drawbndbox = False)
+            self.imagesobject[imgid].put_words(self.skip_word_percentage,drawbndbox = False)
             if letterdata:
                 self.imagesobject[imgid].generate_letter_bndbox(drawbndbox = False)
-                
+            if np.random.random() >= (1 - noise_add):
+                self.imagesobject[imgid].image = self.add_noise(self.imagesobject[imgid].image, self.imagesobject[imgid].fillcolor)
+            if(imgid%10 == 0):
+                print("Done Generating ",imgid," images..")
         return self.imagesobject
     
     def generatelabels(self,filename,path,imagespath,classname = "text"):
@@ -189,6 +194,8 @@ class ImageWordsDataset:
         self.path = path
         self.classname = classname
         self.labelfile = open(self.path + self.filename,'w')
+        datastring = 'filename'+','+ 'width'+','+ 'height'+','+ 'class'+','+ 'xmin'+','+ 'ymin'+','+ 'xmax'+','+ 'ymax'+'\n'
+        self.labelfile.write(datastring)
         self.folderpath = imagespath
         for imgobject in self.imagesobject:
             
@@ -199,19 +206,23 @@ class ImageWordsDataset:
                 ymax = imgobject.wordbndboxdict[word][3]
                 datastring = self.folderpath + str(imgobject.imgid) + ".jpg" + ',' + str(imgobject.img_width) +','+str(imgobject.img_height)+',' + self.classname + ',' + str(xmin) + ',' + str(ymin) + ',' + str(xmax) + ',' + str(ymax) +'\n'
                 self.labelfile.write(datastring)
-                print(datastring)
+            
+        print("Done Writing Lables to file..")
         self.labelfile.close()
             
     def write_images_to_folder(self):
+        i = 0
         for imgobject in self.imagesobject:
             cv2.imwrite(self.folderpath + str(imgobject.imgid) +".jpg",imgobject.image )
+            if i%10 == 0:
+                print("Done writing ",i," images to folder..")
+            i += 1
     
-    def add_noise(self,percent_fraction):
-        for imgobject in self.imagesobject:
-            if np.random.random() > (1 - percent_fraction):
-                imgobject.image = skimage.util.random_noise(imgobject.image, mode="gaussian")
-                imgobject.image = np.array(imgobject.fillcolor*imgobject.image,dtype='uint8')
-                imgobject.image = cv2.blur(imgobject.image,(5,5))
+    def add_noise(self,image,fillcolor):
+        image = skimage.util.random_noise(image, mode="gaussian")
+        image = np.array(fillcolor*image,dtype='uint8')
+        image = cv2.blur(image,(5,5))
+        return image
         
 class letterBndBoxDataset:
     def __init__(self,imagesObjects):
