@@ -167,7 +167,7 @@ class ImageWordsDataset:
         self.num_images = num_images
         
     
-    def generate_img_data(self, letterdata = False,skip_percentage = 0.5,noise_add = 0.5):
+    def generate_img_data(self, letterdata = False,skip_percentage = 0.5,noise_add = 0.5,word_drawbndbox = False,letter_drawbndbox = False):
         self.skip_word_percentage = skip_percentage
         for imgid in range(self.num_images):
             imgh = np.random.randint(300,600)
@@ -180,9 +180,9 @@ class ImageWordsDataset:
             linethickness= np.random.randint(1,3)
             self.imagesobject.append(ImageHandler(imgh, imgw,filcolor, imgid, None))
             self.imagesobject[imgid].generate_word_data(num_words, startPosition, fontchoice , fontsize, linethickness, (0,0,0),randomize = True)
-            self.imagesobject[imgid].put_words(self.skip_word_percentage,drawbndbox = False)
+            self.imagesobject[imgid].put_words(self.skip_word_percentage,word_drawbndbox)
             if letterdata:
-                self.imagesobject[imgid].generate_letter_bndbox(drawbndbox = False)
+                self.imagesobject[imgid].generate_letter_bndbox(letter_drawbndbox)
             if np.random.random() >= (1 - noise_add):
                 self.imagesobject[imgid].image = self.add_noise(self.imagesobject[imgid].image, self.imagesobject[imgid].fillcolor)
             if(imgid%10 == 0):
