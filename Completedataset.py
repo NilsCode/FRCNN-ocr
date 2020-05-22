@@ -34,7 +34,12 @@ class ImageHandler:
     def set_word_list(self, wordlist):
         self.inputwordlist = wordlist
     
-    def generate_word_data(self,num_words, startpos,font,fontsize,linethickness, color, randomize = False):
+    def get_random_word(self,length):
+        word = "".join(list(np.random.choice(alphabets,length)))
+        return(word)
+    
+        
+    def generate_word_data(self,num_words, startpos,font,fontsize,linethickness, color, randomize = False,skip_percentage = 0):
         self.num_words = num_words
         self.startposition = startpos
         self.font = font
@@ -45,14 +50,17 @@ class ImageHandler:
         self.wordbndboxdict = {}
         self.letterbndbox = {}
         self.color = color
+        self.skip_percentage = skip_percentage
         startPos = [startpos[0], startpos[1]]
         word = ""
         xmin = startPos[0]
         ymin = startPos[1]
+        index = 0
         for i in range(self.num_words):
             if randomize:
-                wordsize = np.random.randint(1,12)
-                word = "".join(list(np.random.choice(alphabets,wordsize)))
+                wordlength = np.random.randint(1,12)
+                word = self.get_random_word(wordlength)
+                
             else:
                 if(not len(self.inputwordlist)):
                     print("Wordlist not set...")
@@ -76,32 +84,33 @@ class ImageHandler:
                 ymin += wordheight + margin
             
             else:
-                self.wordlist.append(word)
-                self.wordputpointdict[word] = (word_x_cord,word_y_cord)
-                self.wordbndboxdict[word] = (xmin - 2 ,ymin - 2 ,xmax + 2 ,ymax + 2)
+                if np.random.random() > 1 - self.skip_percentage:
+                    self.wordlist.append(word)
+                    self.wordputpointdict[index] = (word_x_cord,word_y_cord,word)
+                    self.wordbndboxdict[index] = (xmin - 2 ,ymin - 2 ,xmax + 2 ,ymax + 2,word)
+                    index += 1
                 xmin = xmax + margin
                 
     def generate_letter_bndbox(self,drawbndbox = False):
         self.wordletterBoxdict = {}
         self.letterCrops = {}
         self.wordCrops = {}
-        i = 0
-        
+        index = 0
         for word in list(self.wordlist):
-            if word not in self.wordletterBoxdict.keys():
-                self.wordletterBoxdict[word] = {}
-            cropxmin = self.wordbndboxdict[word][0]
-            cropymin = self.wordbndboxdict[word][1]
-            cropxmax = self.wordbndboxdict[word][2]
-            cropymax = self.wordbndboxdict[word][3]
-            startposX = self.wordbndboxdict[word][0] + 2
-            startposY = self.wordbndboxdict[word][1] + 2
-            self.wordCrops[word] = self.image[cropymin:cropymax,cropxmin:cropxmax]
-            
+            if index not in self.wordletterBoxdict.keys():
+                self.wordletterBoxdict[index] = [0]*len(word)
+            cropxmin = self.wordbndboxdict[index][0]
+            cropymin = self.wordbndboxdict[index][1]
+            cropxmax = self.wordbndboxdict[index][2]
+            cropymax = self.wordbndboxdict[index][3]
+            startposX = self.wordbndboxdict[index][0] + 2
+            startposY = self.wordbndboxdict[index][1] + 2
+            self.wordCrops[index] = self.image[cropymin:cropymax,cropxmin:cropxmax]
+            lxmin = 0 # startposX
+            lymin = 0 # startposY
+            counter = 0
             for letter in word:
                 labelSize = cv2.getTextSize(letter,self.font,self.fontsize,self.linethickness)
-                lxmin = startposX
-                lymin = startposY
                 lxmax = lxmin+labelSize[0][0] - self.linethickness
                 lymax = lymin+int(labelSize[0][1])
                 word_height = lymax - lymin
@@ -111,34 +120,34 @@ class ImageHandler:
                 flymin = max((lymin - 5),0)
                 flxmax = min(lxmax+self.linethickness,self.img_width)
                 flymax = min(lymax,self.img_height)
-                nimgcv = self.image[flymin:flymax,flxmin:flxmax]
+                #nimgcv = self.image[flymin:flymax,flxmin:flxmax]
                 imgwl = flxmax - flxmin
                 imghl = flymax - flymin
                 
-                self.wordletterBoxdict[word][letter] = (flxmin,flymin,flxmax,flymax)
-                self.letterCrops[letter] = [nimgcv,(0,0,imgwl,imghl)]
+                self.wordletterBoxdict[index][counter] = (flxmin,flymin,flxmax,flymax,letter)
+                #self.letterCrops[letter] = [nimgcv,(0,0,imgwl,imghl)]
                 if drawbndbox:
-                    cv2.rectangle(self.image,(flxmin,flymin),(flxmax,flymax),(0,0,255),1)
+                    cv2.rectangle(self.wordCrops[index],(flxmin,flymin),(flxmax,flymax),(0,0,255),1)
                 
-                startposX = lxmax
-                startposY = lymin
-                
+                lxmin = lxmax
+                lymin = lymin
+                # startposX = lxmax
+                # startposY = lymin
+                counter += 1
+            index += 1
         return self.wordletterBoxdict
     
-    def put_words(self,randomize = 1,drawbndbox = False):
-        if np.random.random() >= randomize:
-            selectionPercentage = np.random.randint(50,100)
-            words_to_put = np.random.choice(self.wordlist,int(len(self.wordlist)*selectionPercentage/100.0))
-            self.wordlist = words_to_put
+    def put_words(self,drawbndbox = False):
+        index = 0
         for word in self.wordlist:
-            wordx = self.wordputpointdict[word][0]
-            wordy = self.wordputpointdict[word][1]
+            wordx = self.wordputpointdict[index][0]
+            wordy = self.wordputpointdict[index][1]
             cv2.putText(self.image,word,(wordx,wordy),self.font,
                         self.fontsize,self.color,self.linethickness)
             if drawbndbox:
-                box = self.wordbndboxdict[word]
+                box = self.wordbndboxdict[index]
                 cv2.rectangle(self.image,(box[0],box[1]),(box[2],box[3]),(0,0,255),1)
-        
+            index += 1
         
     def show_image(self):
         cv2.imshow(str(self.imgid),self.image)
@@ -179,8 +188,8 @@ class ImageWordsDataset:
             fontsize = np.random.choice([1,1.5,2,2.5])
             linethickness= np.random.randint(1,3)
             self.imagesobject.append(ImageHandler(imgh, imgw,filcolor, imgid, None))
-            self.imagesobject[imgid].generate_word_data(num_words, startPosition, fontchoice , fontsize, linethickness, (0,0,0),randomize = True)
-            self.imagesobject[imgid].put_words(self.skip_word_percentage,word_drawbndbox)
+            self.imagesobject[imgid].generate_word_data(num_words, startPosition, fontchoice , fontsize, linethickness, (0,0,0),randomize = True,skip_percentage = self.skip_word_percentage)
+            self.imagesobject[imgid].put_words(word_drawbndbox)
             if letterdata:
                 self.imagesobject[imgid].generate_letter_bndbox(letter_drawbndbox)
             if np.random.random() >= (1 - noise_add):
@@ -198,16 +207,16 @@ class ImageWordsDataset:
         self.labelfile.write(datastring)
         self.folderpath = imagespath
         for imgobject in self.imagesobject:
-            
+            index = 0
             for word in imgobject.wordlist:
-                xmin = imgobject.wordbndboxdict[word][0]
-                ymin = imgobject.wordbndboxdict[word][1]
-                xmax = imgobject.wordbndboxdict[word][2]
-                ymax = imgobject.wordbndboxdict[word][3]
+                xmin = imgobject.wordbndboxdict[index][0]
+                ymin = imgobject.wordbndboxdict[index][1]
+                xmax = imgobject.wordbndboxdict[index][2]
+                ymax = imgobject.wordbndboxdict[index][3]
                 datastring = self.folderpath + str(imgobject.imgid) + ".jpg" + ',' + str(imgobject.img_width) +','+str(imgobject.img_height)+',' + self.classname + ',' + str(xmin) + ',' + str(ymin) + ',' + str(xmax) + ',' + str(ymax) +'\n'
                 self.labelfile.write(datastring)
-            
-        print("Done Writing Lables to file..")
+                index += 1
+        print("Done Writing Train Lables to file..")
         self.labelfile.close()
             
     def write_images_to_folder(self):
@@ -221,29 +230,43 @@ class ImageWordsDataset:
     def add_noise(self,image,fillcolor):
         image = skimage.util.random_noise(image, mode="gaussian")
         image = np.array(fillcolor*image,dtype='uint8')
-        image = cv2.blur(image,(5,5))
+        image = cv2.blur(image,(3,3))
         return image
         
 class letterBndBoxDataset:
     def __init__(self,imagesObjects):
         self.imagesObjects = imagesObjects
         
-    def generate_labels(self,fileobject,path,classname = "text"):
+    def generate_labels(self,filename,path,imagespath,classname = "text"):
+        self.filename = filename
+        self.folderpath = imagespath
         self.classname = classname
-        self.path = path
+        self.labelpath = path
+        self.labelfile = open(self.labelpath + self.filename,'w')
+        datastring = 'filename'+','+ 'width'+','+ 'height'+','+ 'class'+','+ 'xmin'+','+ 'ymin'+','+ 'xmax'+','+ 'ymax'+'\n'
+        self.labelfile.write(datastring)
+        
         for imgobject in self.imagesObjects:
+            subid = 0
+            index = 0
             for word in imgobject.wordlist:
-                for letter in imgobject.wordletterBoxdict[word].keys():
-                    xmin = imgobject.wordletterBoxdict[word][letter][0]
-                    ymin = imgobject.wordletterBoxdict[word][letter][1]
-                    xmax = imgobject.wordletterBoxdict[word][letter][2]
-                    ymax = imgobject.wordletterBoxdict[word][letter][3]
-                    datastring = self.path + str(imgobject.imgid) + ".jpg" + ',' + str(imgobject.img_width) +','+str(imgobject.img_height)+',' + self.classname + ',' + str(xmin) + ',' + str(ymin) + ',' + str(xmax) + ',' + str(ymax) +'\n'
-                    print(datastring)
+                for proplist in imgobject.wordletterBoxdict[index]:
+                    xmin = proplist[0]
+                    ymin = proplist[1]
+                    xmax = proplist[2]
+                    ymax = proplist[3]
+                    letter = proplist[4]
+                    datastring = self.folderpath + str(imgobject.imgid) +  '_' + str(subid) + ".jpg" + ',' + str(imgobject.img_width) +','+str(imgobject.img_height)+',' + letter + ',' + str(xmin) + ',' + str(ymin) + ',' + str(xmax) + ',' + str(ymax) +'\n'
+                    self.labelfile.write(datastring)
+                    #print(datastring)
+                subid += 1
+                index += 1
+        print("Done Writing Test Lables to file..")
+        self.labelfile.close()
     
     def write_to_file(self):
         for imgobject in self.imagesObjects:
             subid = 0
             for word in imgobject.wordCrops.keys():
-                cv2.imwrite(self.path + str(imgobject.imgid) + '_' + str(subid) + ".jpg",imgobject.wordCrops[word])
+                cv2.imwrite(self.folderpath + str(imgobject.imgid) + '_' + str(subid) + ".jpg",imgobject.wordCrops[word])
                 subid += 1
